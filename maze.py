@@ -4,6 +4,7 @@ from tkinter.ttk import *
 from matrix import Matrix
 
 
+# grid dimensions
 WIDTH = 1000
 HEIGHT = 500
 CELL_SIZE = 50
@@ -38,26 +39,32 @@ class MazeApplication(Frame):
         file.add_command(label='BFS', command=self.__matrix.BFS_search)
         menu.add_cascade(label='Solve', menu=file)
 
-    def draw_maze(self): 
+    def draw_maze(self):
+        # Draw grid
         for i in range(0, self.__width, self.__cell_size):
             self.__canvas.create_line(i, 0, i, 500, fill="gray", dash=(3,5))
         for i in range(0, self.__height, self.__cell_size):
             self.__canvas.create_line(0, i, 1000, i, fill="gray", dash=(3,5))
+
+        # binf mouse buttons
         self.__canvas.bind("<Button-1>", self.__leftclick)
         self.__canvas.bind("<Button-2>", self.__middleclick)
         self.__canvas.bind("<Button-3>", self.__rightclick)
         self.__canvas.pack()
 
     def __leftclick(self, event):
+        # add/remove walls or obstacles
         x = event.x // self.__cell_size
         y = event.y // self.__cell_size
         value = self.__matrix.get_cell(x, y)
         if value == 1:
+            # remove wall/obstacle
             self.__matrix.set_cell(x, y, 0)
             rect = self.__rects[(x, y)]
             self.__canvas.delete(rect)
             del self.__rects[(x, y)]
         else:
+            # add wall/obstacle
             self.__matrix.set_cell(x, y, 1)
             left = x * CELL_SIZE
             top = y * CELL_SIZE
@@ -90,7 +97,6 @@ class MazeApplication(Frame):
                                               fill='green')
         self.__rects[(x, y)] = rect
 
-
     def __rightclick(self, event):
         # get previous end point
         end = self.__matrix.get_end()
@@ -120,6 +126,7 @@ class MazeApplication(Frame):
         pass
 
     def __clear(self):
+        # Clear the grid and matrix
         self.__matrix.clear()
         for key in self.__rects.keys():
             self.__canvas.delete(self.__rects[key])

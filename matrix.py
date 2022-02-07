@@ -10,6 +10,7 @@ class Matrix:
         self.__end = None
 
     def clear(self):
+        # clear all cells to 0
         for i in range(self.__matrix.shape[0]):
             for j in range(self.__matrix.shape[1]):
                 self.__matrix[i, j] = 0
