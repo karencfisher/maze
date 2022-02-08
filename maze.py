@@ -1,5 +1,9 @@
+import json
+
 from tkinter import *
 from tkinter.ttk import *
+from tkinter.filedialog import asksaveasfilename, askopenfilename
+from tkinter.simpledialog import askstring
 
 from matrix import Matrix
 
@@ -52,6 +56,22 @@ class MazeApplication(Frame):
         self.__canvas.bind("<Button-3>", self.__rightclick)
         self.__canvas.pack()
 
+    def __fill_cell(self, x, y, color):
+        left = x * CELL_SIZE
+        top = y * CELL_SIZE
+        rect = self.__canvas.create_rectangle(left, top, left + CELL_SIZE, 
+                                              top + CELL_SIZE, fill=color)
+        self.__rects[(x, y)] = rect
+
+    def __fill_maze(self):
+        walls = self.__matrix.get_filled_cells()
+        for y, x in walls:
+            self.__fill_cell(x, y, 'black')
+        x, y = self.__matrix.get_start()
+        self.__fill_cell(x, y, 'green')
+        x, y = self.__matrix.get_end()
+        self.__fill_cell(x, y, 'red')   
+
     def __leftclick(self, event):
         # add/remove walls or obstacles
         x = event.x // self.__cell_size
@@ -66,14 +86,7 @@ class MazeApplication(Frame):
         else:
             # add wall/obstacle
             self.__matrix.set_cell(x, y, 1)
-            left = x * CELL_SIZE
-            top = y * CELL_SIZE
-            rect = self.__canvas.create_rectangle(left, 
-                                                  top, 
-                                                  left + CELL_SIZE, 
-                                                  top + CELL_SIZE,
-                                                  fill='black')
-            self.__rects[(x, y)] = rect
+            self.__fill_cell(x, y, 'black')
 
     def __middleclick(self, event):
         # get current start point
@@ -87,15 +100,8 @@ class MazeApplication(Frame):
         # set new start point
         x = event.x // self.__cell_size
         y = event.y // self.__cell_size
-        self.__matrix.set_start(x, y)
-        left = x * CELL_SIZE
-        top = y * CELL_SIZE
-        rect = self.__canvas.create_rectangle(left, 
-                                              top, 
-                                              left + CELL_SIZE, 
-                                              top + CELL_SIZE,
-                                              fill='green')
-        self.__rects[(x, y)] = rect
+        self.__matrix.set_start((x, y))
+        self.__fill_cell(x, y, 'green')
 
     def __rightclick(self, event):
         # get previous end point
@@ -109,25 +115,38 @@ class MazeApplication(Frame):
         # set new end point
         x = event.x // self.__cell_size
         y = event.y // self.__cell_size
-        self.__matrix.set_end(x, y)
-        left = x * CELL_SIZE
-        top = y * CELL_SIZE
-        rect = self.__canvas.create_rectangle(left, 
-                                              top, 
-                                              left + CELL_SIZE, 
-                                              top + CELL_SIZE,
-                                              fill='red')
-        self.__rects[(x, y)] = rect
+        self.__matrix.set_end((x, y))
+        self.__fill_cell(x, y, 'red')
 
     def __load(self):
-        pass
+        filename = askopenfilename(filetypes=[('JSON files', '*.json')])
+        if filename == '':
+            return
+        with open(filename, 'r') as fp:
+            data = json.load(fp)
+        self.__clear()
+        for i in range(len(data['walls'])):
+            y, x = data['walls'][i]
+            self.__matrix.set_cell(x, y, 1)
+        self.__matrix.set_start(data['start'])
+        self.__matrix.set_end(data['end'])
+        self.__fill_maze()
 
     def __store(self):
-        pass
+        filename = asksaveasfilename(filetypes=[('JSON files', '*.json')])
+        if filename == '':
+            return
+        data = {'start': self.__matrix.get_start(),
+                'end': self.__matrix.get_end(),
+                'walls': self.__matrix.get_filled_cells().tolist()}
+        with open(filename, 'w') as fp:
+            json.dump(data, fp)
 
     def __clear(self):
         # Clear the grid and matrix
         self.__matrix.clear()
+        self.__matrix.set_start(None)
+        self.__matrix.set_end(None)
         for key in self.__rects.keys():
             self.__canvas.delete(self.__rects[key])
         self.__rects.clear()

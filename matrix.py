@@ -21,17 +21,20 @@ class Matrix:
     def set_cell(self, x, y, value):
         self.__matrix[y, x] = value
 
+    def get_filled_cells(self):
+        return np.argwhere(self.__matrix == 1)
+
     def get_start(self):
         return self.__start
 
-    def set_start(self, x, y):
-        self.__start = (x, y)
+    def set_start(self, start):
+        self.__start = start
 
     def get_end(self):
         return self.__end
 
-    def set_end(self, x, y):
-        self.__end = (x, y)
+    def set_end(self, end):
+        self.__end = end
 
     def DFS_search(self):
         pass
