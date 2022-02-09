@@ -40,6 +40,7 @@ class Matrix:
 
     def DFS_search(self):
         path_found = []
+        
         def recurse(node, path):
             nonlocal path_found
             path.append(node)
@@ -52,11 +53,36 @@ class Matrix:
                     continue
                 recurse(adj, path)
                 path.pop()
+
         recurse(self.__start, [])
         return path_found
 
     def BFS_search(self):
+        visited = set()
+        visited.add(self.__start)
+        parents = {self.__start: None}
+        que = [self.__start]
+        while len(que) > 0:
+            node = que.pop(0)
+            if node == self.__end:
+                path = self.__BFS_reconstruct_path(parents, self.__end)
+                break
+            adjacent = self.__get_adjacent(node)
+            for adj in adjacent:
+                if adj in visited:
+                    continue
+                que.append(adj)
+                parents[adj] = node
+                visited.add(adj)
+        return path
+
+    def __BFS_reconstruct_path(self, parents, end):
         path = []
+        path.append(end)
+        while parents[end] is not None:
+            path.append(parents[end])
+            end = parents[end]
+        path.reverse()
         return path
 
     def __get_adjacent(self, cell):
