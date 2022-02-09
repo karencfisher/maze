@@ -55,7 +55,6 @@ class Matrix:
         recurse(self.__start, [])
         return path_found
 
-
     def BFS_search(self):
         path = []
         return path
