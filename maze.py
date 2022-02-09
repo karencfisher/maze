@@ -24,6 +24,7 @@ class MazeApplication(Frame):
         self.__cell_size = cell_size
         self.__rects = {}
         self.__matrix = matrix
+        self.__path = None
 
     def init_window(self):
         self.__master.title("Maze")
@@ -39,8 +40,11 @@ class MazeApplication(Frame):
         menu.add_cascade(label='File', menu=file)
 
         file = Menu(menu)
-        file.add_command(label='DFS', command=self.__matrix.DFS_search)
-        file.add_command(label='BFS', command=self.__matrix.BFS_search)
+        file.add_command(label='DFS', 
+                         command=lambda: self.__search(self.__matrix.DFS_search))
+        file.add_command(label='BFS', 
+                         command=lambda: self.__search(self.__matrix.BFS_search))
+        file.add_command(label='Clear Path', command = self.__clear_path)
         menu.add_cascade(label='Solve', menu=file)
 
     def draw_maze(self):
@@ -63,14 +67,16 @@ class MazeApplication(Frame):
                                               top + CELL_SIZE, fill=color)
         self.__rects[(x, y)] = rect
 
-    def __fill_maze(self):
-        walls = self.__matrix.get_filled_cells()
-        for y, x in walls:
-            self.__fill_cell(x, y, 'black')
-        x, y = self.__matrix.get_start()
-        self.__fill_cell(x, y, 'green')
-        x, y = self.__matrix.get_end()
-        self.__fill_cell(x, y, 'red')   
+    def __fill_maze(self, cells=None, color='black'):
+        if cells is None:
+            # default case -- draw the maze
+            cells = self.__matrix.get_filled_cells()
+            x, y = self.__matrix.get_start()
+            self.__fill_cell(x, y, 'green')
+            x, y = self.__matrix.get_end()
+            self.__fill_cell(x, y, 'red')   
+        for x, y in cells:
+            self.__fill_cell(x, y, color)
 
     def __leftclick(self, event):
         # add/remove walls or obstacles
@@ -126,10 +132,10 @@ class MazeApplication(Frame):
             data = json.load(fp)
         self.__clear()
         for i in range(len(data['walls'])):
-            y, x = data['walls'][i]
+            x, y = data['walls'][i]
             self.__matrix.set_cell(x, y, 1)
-        self.__matrix.set_start(data['start'])
-        self.__matrix.set_end(data['end'])
+        self.__matrix.set_start(tuple(data['start']))
+        self.__matrix.set_end(tuple(data['end']))
         self.__fill_maze()
 
     def __store(self):
@@ -138,7 +144,7 @@ class MazeApplication(Frame):
             return
         data = {'start': self.__matrix.get_start(),
                 'end': self.__matrix.get_end(),
-                'walls': self.__matrix.get_filled_cells().tolist()}
+                'walls': self.__matrix.get_filled_cells()}
         with open(filename, 'w') as fp:
             json.dump(data, fp)
 
@@ -147,9 +153,21 @@ class MazeApplication(Frame):
         self.__matrix.clear()
         self.__matrix.set_start(None)
         self.__matrix.set_end(None)
+        self.__path = None
         for key in self.__rects.keys():
             self.__canvas.delete(self.__rects[key])
         self.__rects.clear()
+
+    def __clear_path(self):
+        if self.__path is not None:
+            for x, y in self.__path[1:-1]:
+                self.__canvas.delete(self.__rects[(x, y)])
+            self.__path = None
+
+    def __search(self, method):
+        self.__clear_path()
+        self.__path = method()
+        self.__fill_maze(cells=self.__path[1:-1], color='green')
 
     def __client_exit(self):       
         self.master.destroy()

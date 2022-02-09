@@ -22,7 +22,9 @@ class Matrix:
         self.__matrix[y, x] = value
 
     def get_filled_cells(self):
-        return np.argwhere(self.__matrix == 1)
+        cells = np.argwhere(self.__matrix == 1)
+        return [(int(cells[i, 1]), int(cells[i, 0])) 
+                    for i in range(len(cells))]
 
     def get_start(self):
         return self.__start
@@ -37,10 +39,41 @@ class Matrix:
         self.__end = end
 
     def DFS_search(self):
-        pass
+        path_found = []
+        def recurse(node, path):
+            nonlocal path_found
+            path.append(node)
+            if node == self.__end:
+                path_found = path[:]
+                return
+            adjacent = self.__get_adjacent(node)
+            for adj in adjacent:
+                if adj in path:
+                    continue
+                recurse(adj, path)
+                path.pop()
+        recurse(self.__start, [])
+        return path_found
+
 
     def BFS_search(self):
-        pass
+        path = []
+        return path
+
+    def __get_adjacent(self, cell):
+        x, y = cell
+        adjacent = []
+        offsets = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        for offset in offsets:
+            x_new, y_new = x + offset[0], y + offset[1]
+            if ((x_new < 0 or x_new >= self.__matrix.shape[1]) or
+                (y_new < 0 or y_new >= self.__matrix.shape[0])):
+                    continue 
+            value = self.__matrix[y_new, x_new]
+            if value == 0:
+                adjacent.append((x_new, y_new))
+        return adjacent
+        
 
 
 
