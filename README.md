@@ -1,3 +1,3 @@
 # maze
 
-![screenshot](screenshot_maze.png)
+![screenshot](maze_screenshot.png)
