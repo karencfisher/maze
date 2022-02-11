@@ -8,6 +8,8 @@ class Matrix:
         self.__matrix = np.zeros((self.__height, self.__width), dtype='int')
         self.__start = None
         self.__end = None
+        self.found_path = []
+        self.stop_flag = False
 
     def clear(self):
         # clear all cells to 0
@@ -42,6 +44,8 @@ class Matrix:
         path_found = []
         
         def recurse(node, path):
+            if self.stop_flag:
+                return
             nonlocal path_found
             path.append(node)
             if node == self.__end:
@@ -52,17 +56,21 @@ class Matrix:
                 if adj in path:
                     continue
                 recurse(adj, path)
-                path.pop()
+                if len(path) > 0:
+                    path.pop()
 
         recurse(self.__start, [])
-        return path_found
+        self.found_path = path_found
 
     def BFS_search(self):
+        path = []
         visited = set()
         visited.add(self.__start)
         parents = {self.__start: None}
         que = [self.__start]
         while len(que) > 0:
+            if self.stop_flag:
+                break
             node = que.pop(0)
             if node == self.__end:
                 path = self.__BFS_reconstruct_path(parents, self.__end)
@@ -74,7 +82,7 @@ class Matrix:
                 que.append(adj)
                 parents[adj] = node
                 visited.add(adj)
-        return path
+        self.found_path = path
 
     def __BFS_reconstruct_path(self, parents, end):
         path = []

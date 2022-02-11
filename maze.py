@@ -1,9 +1,13 @@
 import json
+import time
+from collections import defaultdict
+from threading import Thread, Event
 
 from tkinter import *
 from tkinter.ttk import *
 from tkinter.filedialog import asksaveasfilename, askopenfilename
 from tkinter.simpledialog import askstring
+from tkinter.messagebox import showerror, showinfo
 
 from matrix import Matrix
 
@@ -12,6 +16,7 @@ from matrix import Matrix
 WIDTH = 1000
 HEIGHT = 500
 CELL_SIZE = 50
+TIME_OUT = 3
 
 
 class MazeApplication(Frame):
@@ -22,9 +27,8 @@ class MazeApplication(Frame):
         self.__width = width
         self.__height = height
         self.__cell_size = cell_size
-        self.__rects = {}
+        self.__rects = defaultdict(list)
         self.__matrix = matrix
-        self.__path = None
 
     def init_window(self):
         self.__master.title("Maze")
@@ -33,19 +37,19 @@ class MazeApplication(Frame):
         self.__master.config(menu=menu)
 
         file = Menu(menu)
-        file.add_command(label='Open...', command=self.__load)
-        file.add_command(label='Save...', command=self.__store)
-        file.add_command(label='Clear', command=self.__clear)
+        file.add_command(label='Open Maze...', command=self.__load)
+        file.add_command(label='Save Maze...', command=self.__store)
+        file.add_command(label='Clear Maze', command=self.__clear)
         file.add_command(label='Exit', command=self.__client_exit)
         menu.add_cascade(label='File', menu=file)
 
         file = Menu(menu)
-        file.add_command(label='DFS', 
-                         command=lambda: self.__search(self.__matrix.DFS_search))
-        file.add_command(label='BFS', 
+        file.add_command(label='Breadth First Search', 
                          command=lambda: self.__search(self.__matrix.BFS_search))
-        file.add_command(label='Clear Path', command = self.__clear_path)
-        menu.add_cascade(label='Solve', menu=file)
+        file.add_command(label='Depth First Search', 
+                         command=lambda: self.__search(self.__matrix.DFS_search))
+        file.add_command(label='Clear Breadcrumbs', command = self.__clear_path)
+        menu.add_cascade(label='Solve Maze', menu=file)
 
     def draw_maze(self):
         # Draw grid
@@ -60,28 +64,33 @@ class MazeApplication(Frame):
         self.__canvas.bind("<Button-3>", self.__rightclick)
         self.__canvas.pack()
 
-    def __fill_cell(self, x, y, color):
-        left = x * CELL_SIZE
-        top = y * CELL_SIZE
-        rect = self.__canvas.create_rectangle(left, top, left + CELL_SIZE, 
-                                              top + CELL_SIZE, fill=color)
-        self.__rects[(x, y)] = rect
+    def __fill_cell(self, x, y, color, scaling=1):
+        cell_size = int(CELL_SIZE * scaling)
+        padding = (CELL_SIZE - cell_size) // 2 if scaling < 1 else 0
+        left = x * CELL_SIZE + padding
+        top = y * CELL_SIZE + padding
+        rect = self.__canvas.create_rectangle(left, top, left + cell_size, 
+                                              top + cell_size, fill=color)
+        self.__rects[(x, y)].append(rect)
 
-    def __fill_maze(self, cells=None, color='black'):
-        if cells is None:
-            # default case -- draw the maze
-            cells = self.__matrix.get_filled_cells()
-            x, y = self.__matrix.get_start()
-            self.__fill_cell(x, y, 'green')
-            x, y = self.__matrix.get_end()
-            self.__fill_cell(x, y, 'red')   
+    def __fill_maze(self):
+        # Fill maze from internal array
+        cells = self.__matrix.get_filled_cells()
         for x, y in cells:
-            self.__fill_cell(x, y, color)
+            self.__fill_cell(x, y, 'black')
+        x, y = self.__matrix.get_start()
+        self.__fill_cell(x, y, 'green')
+        x, y = self.__matrix.get_end()
+        self.__fill_cell(x, y, 'red')
 
     def __leftclick(self, event):
         # add/remove walls or obstacles
         x = event.x // self.__cell_size
         y = event.y // self.__cell_size
+        if (self.__matrix.get_start() == (x, y) or 
+            self.__matrix.get_end() == (x, y)):
+                showerror('Error', 'Reset start or end before setting barrier.')
+                return
         value = self.__matrix.get_cell(x, y)
         if value == 1:
             # remove wall/obstacle
@@ -95,32 +104,38 @@ class MazeApplication(Frame):
             self.__fill_cell(x, y, 'black')
 
     def __middleclick(self, event):
+        x = event.x // self.__cell_size
+        y = event.y // self.__cell_size
+        if self.__matrix.get_cell(x, y) == 1:
+            showerror('Error', 'Cannot set start on a barrier.')
+            return
         # get current start point
         start = self.__matrix.get_start()
         if start is not None:
             # remove previous start point
-            x, y = start
-            rect = self.__rects[(x, y)]
+            x_prev, y_prev = start
+            rect = self.__rects[(x_prev, y_prev)]
             self.__canvas.delete(rect)
-            del self.__rects[(x, y)]
+            del self.__rects[(x_prev, y_prev)]
         # set new start point
-        x = event.x // self.__cell_size
-        y = event.y // self.__cell_size
         self.__matrix.set_start((x, y))
         self.__fill_cell(x, y, 'green')
 
     def __rightclick(self, event):
+        x = event.x // self.__cell_size
+        y = event.y // self.__cell_size
+        if self.__matrix.get_cell(x, y) == 1:
+            showerror('Error', 'Cannot set end on a barrier.')
+            return
         # get previous end point
         end = self.__matrix.get_end()
         if end is not None:
             # remove previous end point
-            x, y = end
-            rect = self.__rects[(x, y)]
+            x_prev, y_prev = end
+            rect = self.__rects[(x_prev, y_prev)]
             self.__canvas.delete(rect)
-            del self.__rects[(x, y)]
+            del self.__rects[(x_prev, y_prev)]
         # set new end point
-        x = event.x // self.__cell_size
-        y = event.y // self.__cell_size
         self.__matrix.set_end((x, y))
         self.__fill_cell(x, y, 'red')
 
@@ -153,21 +168,44 @@ class MazeApplication(Frame):
         self.__matrix.clear()
         self.__matrix.set_start(None)
         self.__matrix.set_end(None)
-        self.__path = None
+        self.__matrix.found_path = []
         for key in self.__rects.keys():
-            self.__canvas.delete(self.__rects[key])
+            while len(self.__rects[key]) > 0:
+                rect = self.__rects[key].pop()
+                self.__canvas.delete(rect)
         self.__rects.clear()
 
     def __clear_path(self):
-        if self.__path is not None:
-            for x, y in self.__path[1:-1]:
-                self.__canvas.delete(self.__rects[(x, y)])
-            self.__path = None
+        if len(self.__matrix.found_path) > 0:
+            for x, y in self.__matrix.found_path:
+                rect = self.__rects[(x, y)].pop()
+                self.__canvas.delete(rect)
+            self.__matrix.found_path = []
 
     def __search(self, method):
-        self.__clear_path()
-        self.__path = method()
-        self.__fill_maze(cells=self.__path[1:-1], color='green')
+        if self.__matrix.get_start() is None:
+            showerror('Error', 'Start point not set. Set with middle mouse button.')
+        elif self.__matrix.get_end() is None:
+            showerror('Error', 'End point not set.  Set with right mouse button.')
+        else:
+            self.__clear_path()
+            # setup time out for search thread
+            self.__matrix.stop_flag = False
+            search_thread = Thread(target=method)
+            search_thread.start()
+            # wait for search thread to naturally complete
+            search_thread.join(TIME_OUT)
+            if search_thread.is_alive():
+                # tell it to exit
+                self.__matrix.stop_flag = True
+                search_thread.join()
+                self.__matrix.found_path = []
+                showinfo('Info', 'Search timed out.')
+            elif len(self.__matrix.found_path) == 0:
+                showinfo('Info', 'No path was found.')
+            else:
+                for x, y in self.__matrix.found_path:
+                    self.__fill_cell(x, y, color='yellow', scaling=0.25)
 
     def __client_exit(self):       
         self.master.destroy()
