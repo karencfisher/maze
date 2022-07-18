@@ -1,4 +1,5 @@
 import numpy as np
+from heapq import heappop, heappush
 
 
 class Matrix:
@@ -92,6 +93,27 @@ class Matrix:
             end = parents[end]
         path.reverse()
         return path
+
+    def a_star_search(self):
+        parents = {self.__start: None}
+        visited = {self.__start: 0}
+        que = [(0, self.__start)]
+        while len(que) > 0:
+            node = heappop(que)
+            if node[1] == self.__end:
+                path = self.__BFS_reconstruct_path(parents, self.__end)
+                break
+            adjacent = self.__get_adjacent(node[1])
+            for child in adjacent:
+                g = visited[node[1]] + 1
+                g_child = visited.get(child)
+                if g_child is None or g < g_child:
+                    parents[child] = node[1]
+                    visited[child] = g
+                    h = abs(child[0] - self.__end[0]) + abs(child[1] - self.__end[1])
+                    f = h + g
+                    heappush(que, (f, child))
+        self.found_path = path
 
     def __get_adjacent(self, cell):
         x, y = cell

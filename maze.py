@@ -48,6 +48,8 @@ class MazeApplication(Frame):
                          command=lambda: self.__search(self.__matrix.BFS_search))
         file.add_command(label='Depth First Search', 
                          command=lambda: self.__search(self.__matrix.DFS_search))
+        file.add_command(label='A* search',
+                         command=lambda: self.__search(self.__matrix.a_star_search))
         file.add_command(label='Clear Breadcrumbs', command = self.__clear_path)
         menu.add_cascade(label='Solve Maze', menu=file)
 
